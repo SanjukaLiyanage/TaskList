@@ -42,7 +42,5 @@ class TaskViewModel(application: Application) : AndroidViewModel(application) {
     fun updateTaskPaticularField(taskId: String,title:String,description:String) {
         taskRepository.updateTaskPaticularField(taskId, title, description)
     }
-    fun searchTaskList(query: String){
-        taskRepository.searchTaskList(query)
-    }
+
 }

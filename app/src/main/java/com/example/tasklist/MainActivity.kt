@@ -208,7 +208,6 @@ class MainActivity : AppCompatActivity() {
         callGetTaskList(taskRVVBListAdapter)
         callSortByLiveData()
         statusCallback()
-        callSearch()
     }
 
     private fun restoreDeletedTask(deletedTask: Task) {
@@ -222,31 +221,7 @@ class MainActivity : AppCompatActivity() {
         snackBar.show()
     }
 
-    private fun callSearch() {
-        mainBinding.edSearch.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
 
-            override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
-
-            override fun afterTextChanged(query: Editable) {
-                if (query.toString().isNotEmpty()) {
-                    taskViewModel.searchTaskList(query.toString())
-                } else {
-                    callSortByLiveData()
-                }
-            }
-        })
-
-        mainBinding.edSearch.setOnEditorActionListener { v, actionId, event ->
-            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                hideKeyBoard(v)
-                return@setOnEditorActionListener true
-            }
-            false
-        }
-
-        callSortByDialog()
-    }
 
     private fun callSortByLiveData() {
         taskViewModel.sortByLiveData.observe(this) {
