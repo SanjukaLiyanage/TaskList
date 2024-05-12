@@ -1,31 +1,26 @@
 package com.example.tasklist
 
-import android.os.Bundle
 import android.app.Dialog
+import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
 import android.util.Log
-import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
-import androidx.core.widget.addTextChangedListener
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModelProvider
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.StaggeredGridLayoutManager
-import androidx.room.Query
 import com.example.tasklist.adapters.TaskRVVBListAdapter
 import com.example.tasklist.databinding.ActivityMainBinding
 import com.example.tasklist.models.Task
 import com.example.tasklist.utils.Status
 import com.example.tasklist.utils.StatusResult
-import com.example.tasklist.utils.StatusResult.Added
-import com.example.tasklist.utils.StatusResult.Deleted
-import com.example.tasklist.utils.StatusResult.Updated
+import com.example.tasklist.utils.StatusResult.*
 import com.example.tasklist.utils.clearEditText
 import com.example.tasklist.utils.hideKeyBoard
 import com.example.tasklist.utils.longToastShow
@@ -39,16 +34,13 @@ import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.launch
 import java.util.Date
 import java.util.UUID
 
 class MainActivity : AppCompatActivity() {
 
-    private val mainBinding: ActivityMainBinding by lazy {
-        ActivityMainBinding.inflate(layoutInflater)
-    }
+    private lateinit var mainBinding: ActivityMainBinding
 
     private val addTaskDialog: Dialog by lazy {
         Dialog(this, R.style.DialogCustomTheme).apply {
@@ -69,7 +61,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private val taskViewModel: TaskViewModel by lazy {
-        ViewModelProvider(this)[TaskViewModel::class.java]
+        ViewModelProvider(this).get(TaskViewModel::class.java)
     }
 
     private val isListMutableLiveData = MutableLiveData<Boolean>().apply {
@@ -78,8 +70,8 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        mainBinding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(mainBinding.root)
-
 
         // Add task start
         val addCloseImg = addTaskDialog.findViewById<ImageView>(R.id.closeImg)
@@ -94,7 +86,6 @@ class MainActivity : AppCompatActivity() {
             override fun afterTextChanged(s: Editable) {
                 validateEditText(addETTitle, addETTitleL)
             }
-
         })
 
         val addETDesc = addTaskDialog.findViewById<TextInputEditText>(R.id.edTaskDesc)
@@ -113,12 +104,12 @@ class MainActivity : AppCompatActivity() {
             clearEditText(addETDesc, addETDescL)
             addTaskDialog.show()
         }
+
         val saveTaskBtn = addTaskDialog.findViewById<Button>(R.id.saveTaskBtn)
         saveTaskBtn.setOnClickListener {
             if (validateEditText(addETTitle, addETTitleL)
                 && validateEditText(addETDesc, addETDescL)
             ) {
-
                 val newTask = Task(
                     UUID.randomUUID().toString(),
                     addETTitle.text.toString().trim(),
@@ -132,7 +123,6 @@ class MainActivity : AppCompatActivity() {
         }
         // Add task end
 
-
         // Update Task Start
         val updateETTitle = updateTaskDialog.findViewById<TextInputEditText>(R.id.edTaskTitle)
         val updateETTitleL = updateTaskDialog.findViewById<TextInputLayout>(R.id.edTaskTitleL)
@@ -143,7 +133,6 @@ class MainActivity : AppCompatActivity() {
             override fun afterTextChanged(s: Editable) {
                 validateEditText(updateETTitle, updateETTitleL)
             }
-
         })
 
         val updateETDesc = updateTaskDialog.findViewById<TextInputEditText>(R.id.edTaskDesc)
@@ -164,15 +153,15 @@ class MainActivity : AppCompatActivity() {
 
         // Update Task End
 
-        isListMutableLiveData.observe(this){
-            if (it){
+        isListMutableLiveData.observe(this) {
+            if (it) {
                 mainBinding.taskRV.layoutManager = LinearLayoutManager(
-                    this,LinearLayoutManager.VERTICAL,false
+                    this, LinearLayoutManager.VERTICAL, false
                 )
                 mainBinding.listOrGridImg.setImageResource(R.drawable.ic_view_module)
-            }else{
+            } else {
                 mainBinding.taskRV.layoutManager = StaggeredGridLayoutManager(
-                    2,LinearLayoutManager.VERTICAL
+                    2, LinearLayoutManager.VERTICAL
                 )
                 mainBinding.listOrGridImg.setImageResource(R.drawable.ic_view_list)
             }
@@ -182,14 +171,9 @@ class MainActivity : AppCompatActivity() {
             isListMutableLiveData.postValue(!isListMutableLiveData.value!!)
         }
 
-        val taskRVVBListAdapter = TaskRVVBListAdapter(isListMutableLiveData ) { type, position, task ->
+        val taskRVVBListAdapter = TaskRVVBListAdapter(isListMutableLiveData) { type, position, task ->
             if (type == "delete") {
-                taskViewModel
-                    // Deleted Task
-//                .deleteTask(task)
-                    .deleteTaskUsingId(task.id)
-
-                // Restore Deleted task
+                taskViewModel.deleteTaskUsingId(task.id)
                 restoreDeletedTask(task)
             } else if (type == "update") {
                 updateETTitle.setText(task.title)
@@ -202,69 +186,59 @@ class MainActivity : AppCompatActivity() {
                             task.id,
                             updateETTitle.text.toString().trim(),
                             updateETDesc.text.toString().trim(),
-//                           here i Date updated
                             Date()
                         )
                         hideKeyBoard(it)
                         updateTaskDialog.dismiss()
-                        taskViewModel
-                            .updateTask(updateTask)
-//                            .updateTaskPaticularField(
-//                                task.id,
-//                                updateETTitle.text.toString().trim(),
-//                                updateETDesc.text.toString().trim()
-//                            )
+                        taskViewModel.updateTask(updateTask)
                     }
                 }
                 updateTaskDialog.show()
             }
         }
         mainBinding.taskRV.adapter = taskRVVBListAdapter
-        ViewCompat.setNestedScrollingEnabled(mainBinding.taskRV,false)
+        ViewCompat.setNestedScrollingEnabled(mainBinding.taskRV, false)
         taskRVVBListAdapter.registerAdapterDataObserver(object :
             RecyclerView.AdapterDataObserver() {
             override fun onItemRangeInserted(positionStart: Int, itemCount: Int) {
                 super.onItemRangeInserted(positionStart, itemCount)
-//                mainBinding.taskRV.smoothScrollToPosition(positionStart)
-                mainBinding.nestedScrollView.smoothScrollTo(0,positionStart)
+                mainBinding.nestedScrollView.smoothScrollTo(0, positionStart)
             }
         })
         callGetTaskList(taskRVVBListAdapter)
         callSortByLiveData()
         statusCallback()
-
         callSearch()
-
     }
 
-    private fun restoreDeletedTask(deletedTask : Task){
+    private fun restoreDeletedTask(deletedTask: Task) {
         val snackBar = Snackbar.make(
             mainBinding.root, "Deleted '${deletedTask.title}'",
             Snackbar.LENGTH_LONG
         )
-        snackBar.setAction("Undo"){
+        snackBar.setAction("Undo") {
             taskViewModel.insertTask(deletedTask)
         }
         snackBar.show()
     }
 
     private fun callSearch() {
-        mainBinding.edSearch.addTextChangedListener(object : TextWatcher{
+        mainBinding.edSearch.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
 
             override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {}
 
             override fun afterTextChanged(query: Editable) {
-                if (query.toString().isNotEmpty()){
+                if (query.toString().isNotEmpty()) {
                     taskViewModel.searchTaskList(query.toString())
-                }else{
+                } else {
                     callSortByLiveData()
                 }
             }
         })
 
-        mainBinding.edSearch.setOnEditorActionListener{ v, actionId, event ->
-            if (actionId == EditorInfo.IME_ACTION_SEARCH){
+        mainBinding.edSearch.setOnEditorActionListener { v, actionId, event ->
+            if (actionId == EditorInfo.IME_ACTION_SEARCH) {
                 hideKeyBoard(v)
                 return@setOnEditorActionListener true
             }
@@ -273,15 +247,16 @@ class MainActivity : AppCompatActivity() {
 
         callSortByDialog()
     }
-    private fun callSortByLiveData(){
-        taskViewModel.sortByLiveData.observe(this){
-            taskViewModel.getTaskList(it.second,it.first)
+
+    private fun callSortByLiveData() {
+        taskViewModel.sortByLiveData.observe(this) {
+            taskViewModel.getTaskList(it.second, it.first)
         }
     }
 
     private fun callSortByDialog() {
         var checkedItem = 0   // 2 is default item set
-        val items = arrayOf("Title Ascending", "Title Descending","Date Ascending","Date Descending")
+        val items = arrayOf("Title Ascending", "Title Descending", "Date Ascending", "Date Descending")
 
         mainBinding.sortImg.setOnClickListener {
             MaterialAlertDialogBuilder(this)
@@ -289,16 +264,16 @@ class MainActivity : AppCompatActivity() {
                 .setPositiveButton("Ok") { _, _ ->
                     when (checkedItem) {
                         0 -> {
-                            taskViewModel.setSortBy(Pair("title",true))
+                            taskViewModel.setSortBy(Pair("title", true))
                         }
                         1 -> {
-                            taskViewModel.setSortBy(Pair("title",false))
+                            taskViewModel.setSortBy(Pair("title", false))
                         }
                         2 -> {
-                            taskViewModel.setSortBy(Pair("date",true))
+                            taskViewModel.setSortBy(Pair("date", true))
                         }
                         else -> {
-                            taskViewModel.setSortBy(Pair("date",false))
+                            taskViewModel.setSortBy(Pair("date", false))
                         }
                     }
                 }
@@ -311,9 +286,41 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun statusCallback() {
-        taskViewModel
-            .statusLiveData
-            .observe(this) {
+        taskViewModel.statusLiveData.observe(this) {
+            when (it.status) {
+                Status.LOADING -> {
+                    loadingDialog.show()
+                }
+
+                Status.SUCCESS -> {
+                    loadingDialog.dismiss()
+                    when (it.data as StatusResult) {
+                        Added -> {
+                            Log.d("StatusResult", "Added")
+                        }
+
+                        Deleted -> {
+                            Log.d("StatusResult", "Deleted")
+                        }
+
+                        Updated -> {
+                            Log.d("StatusResult", "Updated")
+                        }
+                    }
+                    it.message?.let { it1 -> longToastShow(it1) }
+                }
+
+                Status.ERROR -> {
+                    loadingDialog.dismiss()
+                    it.message?.let { it1 -> longToastShow(it1) }
+                }
+            }
+        }
+    }
+
+    private fun callGetTaskList(taskRecyclerViewAdapter: TaskRVVBListAdapter) {
+        CoroutineScope(Dispatchers.Main).launch {
+            taskViewModel.taskStateFlow.collectLatest {
                 when (it.status) {
                     Status.LOADING -> {
                         loadingDialog.show()
@@ -321,22 +328,9 @@ class MainActivity : AppCompatActivity() {
 
                     Status.SUCCESS -> {
                         loadingDialog.dismiss()
-                        when (it.data as StatusResult) {
-                            Added -> {
-                                Log.d("StatusResult", "Added")
-                            }
-
-                            Deleted -> {
-                                Log.d("StatusResult", "Deleted")
-
-                            }
-
-                            Updated -> {
-                                Log.d("StatusResult", "Updated")
-
-                            }
+                        it.data?.collect { taskList ->
+                            taskRecyclerViewAdapter.submitList(taskList)
                         }
-                        it.message?.let { it1 -> longToastShow(it1) }
                     }
 
                     Status.ERROR -> {
@@ -345,35 +339,6 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-    }
-
-    private fun callGetTaskList(taskRecyclerViewAdapter: TaskRVVBListAdapter) {
-
-        CoroutineScope(Dispatchers.Main).launch {
-            taskViewModel
-                .taskStateFlow
-                .collectLatest {
-                    Log.d("status", it.status.toString())
-
-                    when (it.status) {
-                        Status.LOADING -> {
-                            loadingDialog.show()
-                        }
-
-                        Status.SUCCESS -> {
-                            loadingDialog.dismiss()
-                            it.data?.collect { taskList ->
-                                taskRecyclerViewAdapter.submitList(taskList)
-                            }
-                        }
-
-                        Status.ERROR -> {
-                            loadingDialog.dismiss()
-                            it.message?.let { it1 -> longToastShow(it1) }
-                        }
-                    }
-
-                }
         }
     }
 }
