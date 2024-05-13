@@ -3,9 +3,13 @@ package com.example.tasklist.repository
 import android.app.Application
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.room.Query
 import com.example.tasklist.database.TaskDatabase
 import com.example.tasklist.models.Task
 import com.example.tasklist.utils.Resource
+import com.example.tasklist.utils.Resource.Error
+import com.example.tasklist.utils.Resource.Loading
+import com.example.tasklist.utils.Resource.Success
 import com.example.tasklist.utils.StatusResult
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -111,6 +115,18 @@ class TaskRepository(application: Application) {
             }
         } catch (e: Exception) {
             _statusLiveData.postValue(Resource.Error(e.message.toString()))
+        }
+    }
+
+    fun searchTaskList(query: String) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                _taskStateFlow.emit(Loading())
+                val result = taskDao.searchTaskList("%${query}%")
+                _taskStateFlow.emit(Success("loading", result))
+            } catch (e: Exception) {
+                _taskStateFlow.emit(Error(e.message.toString()))
+            }
         }
     }
 
